@@ -222,6 +222,18 @@ class OpsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateAssociate(associate: AssociateEntity) {
+        viewModelScope.launch {
+            repository.updateAssociate(associate)
+        }
+    }
+
+    fun deleteAssociate(associate: AssociateEntity) {
+        viewModelScope.launch {
+            repository.deleteAssociate(associate)
+        }
+    }
+
     // User Operations: Module 2 Compliance
     fun toggleCompliance(compliance: ComplianceEntity) {
         viewModelScope.launch {
@@ -346,6 +358,18 @@ class OpsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateSow(sow: SowEntity) {
+        viewModelScope.launch {
+            repository.updateSow(sow)
+        }
+    }
+
+    fun deleteSow(sow: SowEntity) {
+        viewModelScope.launch {
+            repository.deleteSow(sow)
+        }
+    }
+
     fun addAmendment(sow: SowEntity, amendmentNumber: String, summary: String, impact: Double, extensionMonths: Int) {
         viewModelScope.launch {
             val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -362,6 +386,18 @@ class OpsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateAmendment(amendment: SowAmendmentEntity) {
+        viewModelScope.launch {
+            repository.updateAmendment(amendment)
+        }
+    }
+
+    fun deleteAmendment(amendment: SowAmendmentEntity) {
+        viewModelScope.launch {
+            repository.deleteAmendment(amendment)
+        }
+    }
+
     fun addMilestone(sow: SowEntity, name: String, targetDate: String, quarter: String, amount: Double, billingTrigger: String) {
         viewModelScope.launch {
             val milestone = MilestoneEntity(
@@ -375,6 +411,18 @@ class OpsViewModel(application: Application) : AndroidViewModel(application) {
                 billingTrigger = billingTrigger
             )
             repository.insertMilestone(milestone)
+        }
+    }
+
+    fun updateMilestone(milestone: MilestoneEntity) {
+        viewModelScope.launch {
+            repository.updateMilestone(milestone)
+        }
+    }
+
+    fun deleteMilestone(milestone: MilestoneEntity) {
+        viewModelScope.launch {
+            repository.deleteMilestone(milestone)
         }
     }
 
@@ -403,6 +451,18 @@ class OpsViewModel(application: Application) : AndroidViewModel(application) {
                 invoiceRef = invoiceRef
             )
             repository.insertExpense(exp)
+        }
+    }
+
+    fun updateExpense(expense: ExpenseEntity) {
+        viewModelScope.launch {
+            repository.updateExpense(expense)
+        }
+    }
+
+    fun deleteExpense(expense: ExpenseEntity) {
+        viewModelScope.launch {
+            repository.deleteExpense(expense)
         }
     }
 

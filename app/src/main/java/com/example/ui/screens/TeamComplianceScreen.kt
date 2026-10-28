@@ -27,7 +27,9 @@ import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Lock
@@ -645,6 +647,8 @@ private fun DefaulterMatrixSubView(viewModel: OpsViewModel) {
 @Composable
 private fun AssociateRosterSubView(viewModel: OpsViewModel) {
     val associates by viewModel.allAssociates.collectAsStateWithLifecycle()
+    var associateToEdit by remember { mutableStateOf<AssociateEntity?>(null) }
+    var associateToDelete by remember { mutableStateOf<AssociateEntity?>(null) }
 
     LazyColumn(
         modifier = Modifier
@@ -680,7 +684,7 @@ private fun AssociateRosterSubView(viewModel: OpsViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = assoc.name,
@@ -721,12 +725,263 @@ private fun AssociateRosterSubView(viewModel: OpsViewModel) {
                             fontSize = 11.sp
                         )
                     }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { associateToEdit = assoc },
+                            modifier = Modifier.size(36.dp).testTag("edit_associate_${assoc.id}")
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit Associate",
+                                tint = TealAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { associateToDelete = assoc },
+                            modifier = Modifier.size(36.dp).testTag("delete_associate_${assoc.id}")
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete Associate",
+                                tint = AlertCrimson,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
 
         item {
             Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+
+    associateToEdit?.let { assoc ->
+        EditAssociateDialog(
+            associate = assoc,
+            onDismiss = { associateToEdit = null },
+            onSave = { updated ->
+                viewModel.updateAssociate(updated)
+                associateToEdit = null
+            }
+        )
+    }
+
+    associateToDelete?.let { assoc ->
+        DeleteConfirmDialog(
+            title = "Delete Associate",
+            message = "Are you sure you want to remove ${assoc.name} (${assoc.empId})? Their timesheet entries and compliance assignments will also be deleted.",
+            onDismiss = { associateToDelete = null },
+            onConfirm = {
+                viewModel.deleteAssociate(assoc)
+                associateToDelete = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun EditAssociateDialog(
+    associate: AssociateEntity,
+    onDismiss: () -> Unit,
+    onSave: (AssociateEntity) -> Unit
+) {
+    var name by remember { mutableStateOf(associate.name) }
+    var email by remember { mutableStateOf(associate.email) }
+    var empId by remember { mutableStateOf(associate.empId) }
+    var role by remember { mutableStateOf(associate.designation) }
+    var project by remember { mutableStateOf(associate.project) }
+    var client by remember { mutableStateOf(associate.clientAccount) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, TealLight.copy(alpha = 0.4f)),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Edit Associate Details", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Associate Name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("edit_associate_name_input")
+                )
+
+                OutlinedTextField(
+                    value = empId,
+                    onValueChange = { empId = it },
+                    label = { Text("Employee ID") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Corporate Email") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = role,
+                    onValueChange = { role = it },
+                    label = { Text("Designation / Role") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = project,
+                    onValueChange = { project = it },
+                    label = { Text("Project Allocation") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = client,
+                    onValueChange = { client = it },
+                    label = { Text("Client Account") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Cancel", color = SlateLight, maxLines = 1, softWrap = false)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (name.isNotBlank() && email.isNotBlank()) {
+                                onSave(
+                                    associate.copy(
+                                        name = name,
+                                        empId = empId,
+                                        email = email,
+                                        designation = role,
+                                        project = project,
+                                        clientAccount = client
+                                    )
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TealLight, contentColor = Color(0xFF0F172A)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("save_edit_associate_button")
+                    ) {
+                        Text("Save Changes", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteConfirmDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, AlertCrimson.copy(alpha = 0.5f)),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = AlertCrimson, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Text(message, color = SlateLight, fontSize = 13.sp, lineHeight = 18.sp)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Cancel", color = SlateLight, maxLines = 1, softWrap = false)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = onConfirm,
+                        colors = ButtonDefaults.buttonColors(containerColor = AlertCrimson, contentColor = Color.White),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("confirm_delete_button")
+                    ) {
+                        Text("Delete", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
         }
     }
 }

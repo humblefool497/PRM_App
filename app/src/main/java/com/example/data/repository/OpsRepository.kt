@@ -22,7 +22,11 @@ class OpsRepository(private val dao: OpsDao) {
 
     suspend fun insertAssociate(associate: AssociateEntity): Long = dao.insertAssociate(associate)
     suspend fun updateAssociate(associate: AssociateEntity) = dao.updateAssociate(associate)
-    suspend fun deleteAssociate(associate: AssociateEntity) = dao.deleteAssociate(associate)
+    suspend fun deleteAssociate(associate: AssociateEntity) {
+        dao.deleteTimesheetsForAssociate(associate.id)
+        dao.deleteComplianceForAssociate(associate.id)
+        dao.deleteAssociate(associate)
+    }
 
     fun getTimesheetsForDate(date: String): Flow<List<TimesheetEntity>> = dao.getTimesheetsByDate(date)
     val allTimesheets: Flow<List<TimesheetEntity>> = dao.getAllTimesheets()
@@ -62,11 +66,17 @@ class OpsRepository(private val dao: OpsDao) {
     val allSows: Flow<List<SowEntity>> = dao.getAllSows()
     suspend fun insertSow(sow: SowEntity): Long = dao.insertSow(sow)
     suspend fun updateSow(sow: SowEntity) = dao.updateSow(sow)
-    suspend fun deleteSow(sow: SowEntity) = dao.deleteSow(sow)
+    suspend fun deleteSow(sow: SowEntity) {
+        dao.deleteAmendmentsForSow(sow.id)
+        dao.deleteMilestonesForSow(sow.id)
+        dao.deleteExpensesForSow(sow.id)
+        dao.deleteSow(sow)
+    }
 
     val allAmendments: Flow<List<SowAmendmentEntity>> = dao.getAllAmendments()
     fun getAmendmentsForSow(sowId: Long): Flow<List<SowAmendmentEntity>> = dao.getAmendmentsForSow(sowId)
     suspend fun insertAmendment(amendment: SowAmendmentEntity): Long = dao.insertAmendment(amendment)
+    suspend fun updateAmendment(amendment: SowAmendmentEntity) = dao.updateAmendment(amendment)
     suspend fun deleteAmendment(amendment: SowAmendmentEntity) = dao.deleteAmendment(amendment)
 
     val allMilestones: Flow<List<MilestoneEntity>> = dao.getAllMilestones()
@@ -76,5 +86,6 @@ class OpsRepository(private val dao: OpsDao) {
 
     val allExpenses: Flow<List<ExpenseEntity>> = dao.getAllExpenses()
     suspend fun insertExpense(expense: ExpenseEntity): Long = dao.insertExpense(expense)
+    suspend fun updateExpense(expense: ExpenseEntity) = dao.updateExpense(expense)
     suspend fun deleteExpense(expense: ExpenseEntity) = dao.deleteExpense(expense)
 }

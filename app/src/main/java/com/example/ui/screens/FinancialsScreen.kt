@@ -25,7 +25,9 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Flight
@@ -572,6 +574,11 @@ private fun SowsSubView(
     val sows by viewModel.sows.collectAsStateWithLifecycle()
     val amendments by viewModel.amendments.collectAsStateWithLifecycle()
 
+    var sowToEdit by remember { mutableStateOf<SowEntity?>(null) }
+    var sowToDelete by remember { mutableStateOf<SowEntity?>(null) }
+    var amendmentToEdit by remember { mutableStateOf<SowAmendmentEntity?>(null) }
+    var amendmentToDelete by remember { mutableStateOf<SowAmendmentEntity?>(null) }
+
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.US).apply {
         maximumFractionDigits = 0
     }
@@ -636,17 +643,33 @@ private fun SowsSubView(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
-                        Surface(
-                            color = if (sow.status == "Active") Color(0xFF064E3B) else Color(0xFF451A03),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = sow.status,
-                                color = if (sow.status == "Active") AlertGreen else AlertAmber,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                color = if (sow.status == "Active") Color(0xFF064E3B) else Color(0xFF451A03),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = sow.status,
+                                    color = if (sow.status == "Active") AlertGreen else AlertAmber,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { sowToEdit = sow },
+                                modifier = Modifier.size(32.dp).testTag("edit_sow_${sow.id}")
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit SOW", tint = TealAccent, modifier = Modifier.size(16.dp))
+                            }
+                            IconButton(
+                                onClick = { sowToDelete = sow },
+                                modifier = Modifier.size(32.dp).testTag("delete_sow_${sow.id}")
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete SOW", tint = AlertCrimson, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
 
@@ -719,9 +742,10 @@ private fun SowsSubView(
                                 sowAmds.forEach { amd ->
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
+                                        Column(modifier = Modifier.weight(1f).padding(end = 4.dp)) {
                                             Text(
                                                 text = "${amd.amendmentNumber} (${amd.signedDate})",
                                                 color = Color.White,
@@ -734,12 +758,26 @@ private fun SowsSubView(
                                                 fontSize = 11.sp
                                             )
                                         }
-                                        Text(
-                                            text = "+${currencyFormatter.format(amd.financialImpact)}",
-                                            color = TealAccent,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "+${currencyFormatter.format(amd.financialImpact)}",
+                                                color = TealAccent,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            IconButton(
+                                                onClick = { amendmentToEdit = amd },
+                                                modifier = Modifier.size(28.dp).testTag("edit_amd_${amd.id}")
+                                            ) {
+                                                Icon(Icons.Default.Edit, contentDescription = "Edit Amendment", tint = TealAccent, modifier = Modifier.size(14.dp))
+                                            }
+                                            IconButton(
+                                                onClick = { amendmentToDelete = amd },
+                                                modifier = Modifier.size(28.dp).testTag("delete_amd_${amd.id}")
+                                            ) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Delete Amendment", tint = AlertCrimson, modifier = Modifier.size(14.dp))
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -753,6 +791,52 @@ private fun SowsSubView(
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
+
+    sowToEdit?.let { sow ->
+        EditSowDialog(
+            sow = sow,
+            onDismiss = { sowToEdit = null },
+            onSave = { updated ->
+                viewModel.updateSow(updated)
+                sowToEdit = null
+            }
+        )
+    }
+
+    sowToDelete?.let { sow ->
+        FinancialDeleteConfirmDialog(
+            title = "Delete Statement of Work",
+            message = "Are you sure you want to delete ${sow.sowNumber} (${sow.title})? All linked amendments, milestones, and operational expenses will also be permanently deleted.",
+            onDismiss = { sowToDelete = null },
+            onConfirm = {
+                viewModel.deleteSow(sow)
+                sowToDelete = null
+            }
+        )
+    }
+
+    amendmentToEdit?.let { amd ->
+        EditAmendmentDialog(
+            amendment = amd,
+            onDismiss = { amendmentToEdit = null },
+            onSave = { updated ->
+                viewModel.updateAmendment(updated)
+                amendmentToEdit = null
+            }
+        )
+    }
+
+    amendmentToDelete?.let { amd ->
+        FinancialDeleteConfirmDialog(
+            title = "Delete SOW Amendment",
+            message = "Are you sure you want to delete ${amd.amendmentNumber} (+${currencyFormatter.format(amd.financialImpact)}) from ${amd.sowNumber}?",
+            onDismiss = { amendmentToDelete = null },
+            onConfirm = {
+                viewModel.deleteAmendment(amd)
+                amendmentToDelete = null
+            }
+        )
+    }
 }
 
 /**
@@ -761,6 +845,8 @@ private fun SowsSubView(
 @Composable
 private fun MilestonesSubView(viewModel: OpsViewModel) {
     val milestones by viewModel.milestones.collectAsStateWithLifecycle()
+    var milestoneToEdit by remember { mutableStateOf<MilestoneEntity?>(null) }
+    var milestoneToDelete by remember { mutableStateOf<MilestoneEntity?>(null) }
 
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.US).apply {
         maximumFractionDigits = 0
@@ -800,7 +886,7 @@ private fun MilestonesSubView(viewModel: OpsViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 color = when (m.status) {
@@ -859,16 +945,30 @@ private fun MilestonesSubView(viewModel: OpsViewModel) {
                             fontWeight = FontWeight.ExtraBold
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Button(
-                            onClick = { viewModel.cycleMilestoneStatus(m) },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (m.status == "Achieved") AlertGreen else TealContainer,
-                                contentColor = if (m.status == "Achieved") Color.White else TealAccent
-                            ),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text("Cycle Status", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Button(
+                                onClick = { viewModel.cycleMilestoneStatus(m) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (m.status == "Achieved") AlertGreen else TealContainer,
+                                    contentColor = if (m.status == "Achieved") Color.White else TealAccent
+                                ),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("Cycle Status", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                            }
+                            IconButton(
+                                onClick = { milestoneToEdit = m },
+                                modifier = Modifier.size(28.dp).testTag("edit_milestone_${m.id}")
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Milestone", tint = TealAccent, modifier = Modifier.size(15.dp))
+                            }
+                            IconButton(
+                                onClick = { milestoneToDelete = m },
+                                modifier = Modifier.size(28.dp).testTag("delete_milestone_${m.id}")
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Milestone", tint = AlertCrimson, modifier = Modifier.size(15.dp))
+                            }
                         }
                     }
                 }
@@ -879,6 +979,29 @@ private fun MilestonesSubView(viewModel: OpsViewModel) {
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
+
+    milestoneToEdit?.let { m ->
+        EditMilestoneDialog(
+            milestone = m,
+            onDismiss = { milestoneToEdit = null },
+            onSave = { updated ->
+                viewModel.updateMilestone(updated)
+                milestoneToEdit = null
+            }
+        )
+    }
+
+    milestoneToDelete?.let { m ->
+        FinancialDeleteConfirmDialog(
+            title = "Delete Project Milestone",
+            message = "Are you sure you want to delete deliverable milestone '${m.name}' (${currencyFormatter.format(m.amount)}) from ${m.sowNumber}?",
+            onDismiss = { milestoneToDelete = null },
+            onConfirm = {
+                viewModel.deleteMilestone(m)
+                milestoneToDelete = null
+            }
+        )
+    }
 }
 
 /**
@@ -887,6 +1010,9 @@ private fun MilestonesSubView(viewModel: OpsViewModel) {
 @Composable
 private fun ExpenseLogSubView(viewModel: OpsViewModel) {
     val expenses by viewModel.expenses.collectAsStateWithLifecycle()
+    var expenseToEdit by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var expenseToDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
+
     val totalExp = expenses.sumOf { it.amount }
 
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.US).apply {
@@ -935,7 +1061,7 @@ private fun ExpenseLogSubView(viewModel: OpsViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 color = Color(0xFF1E293B),
@@ -966,12 +1092,29 @@ private fun ExpenseLogSubView(viewModel: OpsViewModel) {
                         )
                     }
 
-                    Text(
-                        text = currencyFormatter.format(exp.amount),
-                        color = AlertCrimson,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = currencyFormatter.format(exp.amount),
+                            color = AlertCrimson,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { expenseToEdit = exp },
+                                modifier = Modifier.size(28.dp).testTag("edit_expense_${exp.id}")
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Expense", tint = TealAccent, modifier = Modifier.size(15.dp))
+                            }
+                            IconButton(
+                                onClick = { expenseToDelete = exp },
+                                modifier = Modifier.size(28.dp).testTag("delete_expense_${exp.id}")
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Expense", tint = AlertCrimson, modifier = Modifier.size(15.dp))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -979,6 +1122,29 @@ private fun ExpenseLogSubView(viewModel: OpsViewModel) {
         item {
             Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+
+    expenseToEdit?.let { exp ->
+        EditExpenseDialog(
+            expense = exp,
+            onDismiss = { expenseToEdit = null },
+            onSave = { updated ->
+                viewModel.updateExpense(updated)
+                expenseToEdit = null
+            }
+        )
+    }
+
+    expenseToDelete?.let { exp ->
+        FinancialDeleteConfirmDialog(
+            title = "Delete Expense Item",
+            message = "Are you sure you want to delete expense record '${exp.description}' (${currencyFormatter.format(exp.amount)})?",
+            onDismiss = { expenseToDelete = null },
+            onConfirm = {
+                viewModel.deleteExpense(exp)
+                expenseToDelete = null
+            }
+        )
     }
 }
 
@@ -1524,6 +1690,636 @@ private fun AddExpenseDialog(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text("Log Expense", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditSowDialog(
+    sow: SowEntity,
+    onDismiss: () -> Unit,
+    onSave: (SowEntity) -> Unit
+) {
+    var sowNum by remember { mutableStateOf(sow.sowNumber) }
+    var title by remember { mutableStateOf(sow.title) }
+    var client by remember { mutableStateOf(sow.clientName) }
+    var valueStr by remember { mutableStateOf(sow.totalValue.toString()) }
+    var start by remember { mutableStateOf(sow.startDate) }
+    var end by remember { mutableStateOf(sow.endDate) }
+    var status by remember { mutableStateOf(sow.status) }
+    var statusExpanded by remember { mutableStateOf(false) }
+
+    val statusOptions = listOf("Active", "Extended", "Pending Signature", "Closed")
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, TealLight.copy(alpha = 0.4f)),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Edit Statement of Work", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                OutlinedTextField(
+                    value = sowNum,
+                    onValueChange = { sowNum = it },
+                    label = { Text("SOW Identifier") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("edit_sow_num_input")
+                )
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Scope Title") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = client,
+                    onValueChange = { client = it },
+                    label = { Text("Client Name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = valueStr,
+                    onValueChange = { valueStr = it },
+                    label = { Text("Total Base Value (USD)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = statusExpanded,
+                    onExpandedChange = { statusExpanded = !statusExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = status,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Contract Status") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = TealLight,
+                            unfocusedBorderColor = CharcoalBorder
+                        ),
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = statusExpanded,
+                        onDismissRequest = { statusExpanded = false }
+                    ) {
+                        statusOptions.forEach { opt ->
+                            DropdownMenuItem(
+                                text = { Text(opt) },
+                                onClick = {
+                                    status = opt
+                                    statusExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Cancel", color = SlateLight, maxLines = 1, softWrap = false)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val v = valueStr.toDoubleOrNull() ?: sow.totalValue
+                            if (sowNum.isNotBlank() && title.isNotBlank()) {
+                                onSave(
+                                    sow.copy(
+                                        sowNumber = sowNum,
+                                        title = title,
+                                        clientName = client,
+                                        totalValue = v,
+                                        startDate = start,
+                                        endDate = end,
+                                        status = status
+                                    )
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TealLight, contentColor = Color(0xFF0F172A)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("save_edit_sow_button")
+                    ) {
+                        Text("Save Changes", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditAmendmentDialog(
+    amendment: SowAmendmentEntity,
+    onDismiss: () -> Unit,
+    onSave: (SowAmendmentEntity) -> Unit
+) {
+    var amdNum by remember { mutableStateOf(amendment.amendmentNumber) }
+    var summary by remember { mutableStateOf(amendment.summary) }
+    var impactStr by remember { mutableStateOf(amendment.financialImpact.toString()) }
+    var extMonthsStr by remember { mutableStateOf(amendment.extensionMonths.toString()) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, TealLight.copy(alpha = 0.4f)),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Edit SOW Amendment", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                OutlinedTextField(
+                    value = amdNum,
+                    onValueChange = { amdNum = it },
+                    label = { Text("Amendment Number") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("edit_amd_num_input")
+                )
+
+                OutlinedTextField(
+                    value = summary,
+                    onValueChange = { summary = it },
+                    label = { Text("Summary & Scope Impact") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = impactStr,
+                    onValueChange = { impactStr = it },
+                    label = { Text("Financial Impact Amount (USD)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Cancel", color = SlateLight, maxLines = 1, softWrap = false)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val impact = impactStr.toDoubleOrNull() ?: amendment.financialImpact
+                            val ext = extMonthsStr.toIntOrNull() ?: amendment.extensionMonths
+                            if (amdNum.isNotBlank() && summary.isNotBlank()) {
+                                onSave(
+                                    amendment.copy(
+                                        amendmentNumber = amdNum,
+                                        summary = summary,
+                                        financialImpact = impact,
+                                        extensionMonths = ext
+                                    )
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TealLight, contentColor = Color(0xFF0F172A)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("save_edit_amd_button")
+                    ) {
+                        Text("Save Changes", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditMilestoneDialog(
+    milestone: MilestoneEntity,
+    onDismiss: () -> Unit,
+    onSave: (MilestoneEntity) -> Unit
+) {
+    var name by remember { mutableStateOf(milestone.name) }
+    var targetDate by remember { mutableStateOf(milestone.targetDate) }
+    var quarter by remember { mutableStateOf(milestone.quarter) }
+    var amountStr by remember { mutableStateOf(milestone.amount.toString()) }
+    var trigger by remember { mutableStateOf(milestone.billingTrigger) }
+    var status by remember { mutableStateOf(milestone.status) }
+    var statusExpanded by remember { mutableStateOf(false) }
+
+    val statusOptions = listOf("Pending", "In Progress", "Achieved")
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, TealLight.copy(alpha = 0.4f)),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Edit Project Milestone", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Milestone Deliverable Name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("edit_milestone_name_input")
+                )
+
+                OutlinedTextField(
+                    value = trigger,
+                    onValueChange = { trigger = it },
+                    label = { Text("Billing Trigger Requirement") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = amountStr,
+                    onValueChange = { amountStr = it },
+                    label = { Text("Milestone Amount (USD)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = targetDate,
+                    onValueChange = { targetDate = it },
+                    label = { Text("Target Date (YYYY-MM-DD)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = statusExpanded,
+                    onExpandedChange = { statusExpanded = !statusExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = status,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Milestone Status") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = TealLight,
+                            unfocusedBorderColor = CharcoalBorder
+                        ),
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = statusExpanded,
+                        onDismissRequest = { statusExpanded = false }
+                    ) {
+                        statusOptions.forEach { opt ->
+                            DropdownMenuItem(
+                                text = { Text(opt) },
+                                onClick = {
+                                    status = opt
+                                    statusExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Cancel", color = SlateLight, maxLines = 1, softWrap = false)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val amt = amountStr.toDoubleOrNull() ?: milestone.amount
+                            if (name.isNotBlank()) {
+                                onSave(
+                                    milestone.copy(
+                                        name = name,
+                                        billingTrigger = trigger,
+                                        amount = amt,
+                                        targetDate = targetDate,
+                                        quarter = quarter,
+                                        status = status
+                                    )
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TealLight, contentColor = Color(0xFF0F172A)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("save_edit_milestone_button")
+                    ) {
+                        Text("Save Changes", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditExpenseDialog(
+    expense: ExpenseEntity,
+    onDismiss: () -> Unit,
+    onSave: (ExpenseEntity) -> Unit
+) {
+    var selectedCategory by remember { mutableStateOf(expense.category) }
+    var amountStr by remember { mutableStateOf(expense.amount.toString()) }
+    var desc by remember { mutableStateOf(expense.description) }
+    var invRef by remember { mutableStateOf(expense.invoiceRef) }
+    var date by remember { mutableStateOf(expense.date) }
+    var catExpanded by remember { mutableStateOf(false) }
+
+    val categories = listOf(
+        ExpenseCategory.INFRASTRUCTURE,
+        ExpenseCategory.SOFTWARE_LICENSES,
+        ExpenseCategory.TRAVEL,
+        ExpenseCategory.MISCELLANEOUS
+    )
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, TealLight.copy(alpha = 0.4f)),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Edit Project Expense", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+                ExposedDropdownMenuBox(
+                    expanded = catExpanded,
+                    onExpandedChange = { catExpanded = !catExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedCategory,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Expense Category") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = catExpanded) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = TealLight,
+                            unfocusedBorderColor = CharcoalBorder
+                        ),
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = catExpanded,
+                        onDismissRequest = { catExpanded = false }
+                    ) {
+                        categories.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat) },
+                                onClick = {
+                                    selectedCategory = cat
+                                    catExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = amountStr,
+                    onValueChange = { amountStr = it },
+                    label = { Text("Amount (USD)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("edit_expense_amount_input")
+                )
+
+                OutlinedTextField(
+                    value = desc,
+                    onValueChange = { desc = it },
+                    label = { Text("Description") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = invRef,
+                    onValueChange = { invRef = it },
+                    label = { Text("Invoice / PO Ref") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = TealLight,
+                        unfocusedBorderColor = CharcoalBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Cancel", color = SlateLight, maxLines = 1, softWrap = false)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val amt = amountStr.toDoubleOrNull() ?: expense.amount
+                            if (desc.isNotBlank()) {
+                                onSave(
+                                    expense.copy(
+                                        category = selectedCategory,
+                                        amount = amt,
+                                        description = desc,
+                                        invoiceRef = invRef,
+                                        date = date
+                                    )
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TealLight, contentColor = Color(0xFF0F172A)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("save_edit_expense_button")
+                    ) {
+                        Text("Save Changes", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinancialDeleteConfirmDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, AlertCrimson.copy(alpha = 0.5f)),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = AlertCrimson, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Text(message, color = SlateLight, fontSize = 13.sp, lineHeight = 18.sp)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Cancel", color = SlateLight, maxLines = 1, softWrap = false)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = onConfirm,
+                        colors = ButtonDefaults.buttonColors(containerColor = AlertCrimson, contentColor = Color.White),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("confirm_financial_delete_button")
+                    ) {
+                        Text("Delete", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
             }

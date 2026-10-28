@@ -131,6 +131,15 @@ interface OpsDao {
     @Delete
     suspend fun deleteSow(sow: SowEntity)
 
+    @Query("DELETE FROM sow_amendments WHERE sowId = :sowId")
+    suspend fun deleteAmendmentsForSow(sowId: Long)
+
+    @Query("DELETE FROM milestones WHERE sowId = :sowId")
+    suspend fun deleteMilestonesForSow(sowId: Long)
+
+    @Query("DELETE FROM expenses WHERE sowId = :sowId")
+    suspend fun deleteExpensesForSow(sowId: Long)
+
     // Amendments
     @Query("SELECT * FROM sow_amendments ORDER BY signedDate DESC")
     fun getAllAmendments(): Flow<List<SowAmendmentEntity>>
@@ -143,6 +152,9 @@ interface OpsDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAmendments(amendments: List<SowAmendmentEntity>)
+
+    @Update
+    suspend fun updateAmendment(amendment: SowAmendmentEntity)
 
     @Delete
     suspend fun deleteAmendment(amendment: SowAmendmentEntity)
@@ -173,6 +185,16 @@ interface OpsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpenses(expenses: List<ExpenseEntity>)
 
+    @Update
+    suspend fun updateExpense(expense: ExpenseEntity)
+
     @Delete
     suspend fun deleteExpense(expense: ExpenseEntity)
+
+    // Associate cleanup
+    @Query("DELETE FROM timesheets WHERE associateId = :associateId")
+    suspend fun deleteTimesheetsForAssociate(associateId: Long)
+
+    @Query("DELETE FROM compliance_records WHERE associateId = :associateId")
+    suspend fun deleteComplianceForAssociate(associateId: Long)
 }
