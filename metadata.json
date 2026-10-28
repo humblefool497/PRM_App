@@ -1,0 +1,6 @@
+{
+  "name": "OpsManager",
+  "description": "Enterprise Operations Dashboard to track daily timesheets, team compliance, governance action items, and project financials.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
